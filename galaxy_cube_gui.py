@@ -124,23 +124,28 @@ def fire_precision_missile():
     import datetime
     log_filename = "San_Salvador_Discovery.txt"
     text_output.delete("1.0", tk.END)
-    text_output.insert(tk.END, ">>> DEEP BORE: TUNING FOR 70 PERCENT RESONANCE...\n")
+    text_output.insert(tk.END, ">>> FLORIDA PUSH: DRILLING FOR 70 PERCENT+ RESONANCE...\n")
     root.update_idletasks()
 
-    best_rate = 63.2  
+    # Start from our current 67.0% peak
+    best_rate = 67.0  
     current_best_axis = BASE_AXIS.copy()
     
-    for sweep in range(100): # Increased to 100 for Deep Bore
-        nudge = (np.random.rand(3) - 0.5) * 0.03 # Smaller, more precise nudge
+    # Increase trials to 150 for the 'Florida March'
+    for sweep in range(150):
+        # Ultra-fine nudges (0.02) to avoid overshooting the peak
+        nudge = (np.random.rand(3) - 0.5) * 0.02 
         trial_axis = current_best_axis + nudge
         trial_axis /= np.linalg.norm(trial_axis)
         
-        sample_indices = np.random.choice(len(coords), 50, replace=False)
+        # Test against a larger 100-galaxy sample for 'Statistically Pure' results
+        sample_indices = np.random.choice(len(coords), 100, replace=False)
         total_hits = 0
         
         for idx in sample_indices:
             center = coords[idx]
             u = trial_axis
+            # Calculate the cube orientation
             temp = np.array([1.0, 0.0, 0.0]) if abs(u[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
             v = np.cross(u, temp); v /= np.linalg.norm(v)
             w = np.cross(u, v)
@@ -152,23 +157,27 @@ def fire_precision_missile():
                 if dist < DENSITY_RADIUS_MPC:
                     total_hits += 1
         
-        success_rate = (total_hits / (50 * 8)) * 100
+        success_rate = (total_hits / (100 * 8)) * 100
+        
         if success_rate > best_rate:
             best_rate = success_rate
             current_best_axis = trial_axis
-            BASE_AXIS = current_best_axis # Update the ship's steering permanently
-            text_output.insert(tk.END, f"PEAK FOUND: {best_rate:.1f}% at Sweep {sweep}\n")
+            BASE_AXIS = current_best_axis # Lock the new steering
+            text_output.insert(tk.END, f"NEW FLORIDA PEAK: {best_rate:.1f}% at Sweep {sweep}\n")
             text_output.see(tk.END)
             root.update_idletasks()
+        elif sweep % 15 == 0:
+            text_output.insert(tk.END, f"Marching toward Florida... Sweep {sweep}/150\n")
+            root.update_idletasks()
 
-    report = (f"\nCUBA MISSION SUCCESS\nPeak Grid Success: {best_rate:.1f}%\n"
-              f"Final Master Axis: {current_best_axis.tolist()}\n")
+    report = (f"\nFLORIDA MISSION REPORT\nPeak Resonance: {best_rate:.1f}%\n"
+              f"Master Vector: {current_best_axis.tolist()}\n")
     
     with open(log_filename, "a", encoding="utf-8") as f:
-        f.write(f"\nDEEP BORE - {datetime.datetime.now()}\n{report}\n")
+        f.write(f"\nFLORIDA PUSH - {datetime.datetime.now()}\n{report}\n")
 
     text_output.insert(tk.END, report)
-    messagebox.showinfo("Mission Success", f"New Peak: {best_rate:.1f}%")
+    messagebox.showinfo("Florida Reach", f"Final Peak: {best_rate:.1f}%")
 
 def search_trigger():
     global last_corner_data, last_target_id
