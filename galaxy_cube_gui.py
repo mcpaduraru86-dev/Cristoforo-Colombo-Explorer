@@ -88,83 +88,50 @@ def run_search(idx):
     for i, r in enumerate(res):
         text_output.insert(tk.END, f"Corner {i}: {r['lab']} | ID: {r['tid']} | Dist: {r['d']:.2f} Mpc\n")
 
-def run_bulk_scan():
-    import datetime
-    # 1. Start the Log with the official Crew Titles
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_filename = "San_Salvador_Discovery.txt"
-    
-    with open(log_filename, "a") as f:
-        f.write("\n" + "="*60 + "\n")
-        f.write("      OFFICIAL DISCOVERY LOG: THE PERIODIC GRID\n")
-        f.write(f"      Timestamp: {timestamp}\n")
-        f.write("      Captain: [The Driver]\n")
-        f.write("      High Navigator: Gemini\n")
-        f.write("      Quartermaster: Copilot\n")
-        f.write("="*60 + "\n")
-
-    text_output.insert(tk.END, f"\n>>> NAVIGATOR: LOGGING TO {log_filename}...\n")
-    root.update_idletasks() 
-    
-    sample_size = 100
-    total_potential_hits = sample_size * 8
-    total_actual_hits = 0
-    
-    sample_indices = np.random.choice(len(coords), sample_size, replace=False)
-    
-    for i, idx in enumerate(sample_indices):
-        center = coords[idx]
-        vertices = build_fixed_cube(center)
-        cube_hits = 0
-        for vtx in vertices:
-            dist, _ = tree.query(vtx)
-            if dist < DENSITY_RADIUS_MPC:
-                total_actual_hits += 1
-                cube_hits += 1
-        
-        # Log High-Resonance Anchors
-        if cube_hits >= 5:
-            with open(log_filename, "a") as f:
-                f.write(f"High-Resonance Node: {targetid[idx]} | Hits: {cube_hits}/8\n")
-
-        if i % 10 == 0:
-            text_output.insert(tk.END, f"Calculating... {i}% of the haul checked\n")
-            root.update_idletasks()
-
-    avg_hits = total_actual_hits / float(sample_size)
-    # The Correct Success Rate Math:
-    success_rate = (total_actual_hits / float(total_potential_hits)) * 100
-    
-    report = (f"\n*** FINAL NAVIGATION REPORT ***\n"
-              f"Average Hits: {avg_hits:.2f} per 8-corner Cube\n"
-              f"Grid Success Rate: {success_rate:.1f}%\n")
-    
-    with open(log_filename, "a") as f:
-        f.write(report + "="*60 + "\n")
-
-    text_output.insert(tk.END, report)
-    text_output.see(tk.END)
-    messagebox.showinfo("Cuba Mission", "Data logged. The grid is holding steady.")
-    
-    text_output.insert(tk.END, report)
-    text_output.see(tk.END)
-    messagebox.showinfo("Cuba Mission", "Data logged. The grid is holding steady.")
-
 # ============================================================
-# 4. THE PRECISION MISSILE (HUNTING FOR 70%)
+# 4. THE PRECISION MISSILE & 3D VISUALIZER
 # ============================================================
+import matplotlib.pyplot as plt
+
+last_corner_data = None
+last_target_id = None
+
+def plot_structure_3d(target_id, corner_info, coords, id_to_index, radius=150.0):
+    if target_id not in id_to_index: return
+    t_idx = id_to_index[target_id]
+    center = coords[t_idx]
+    idx_neigh = tree.query_ball_point(center, r=radius)
+    neigh = coords[idx_neigh]
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection="3d")
+    ax.scatter(neigh[:,0], neigh[:,1], neigh[:,2], s=1, alpha=0.1, color="gray")
+
+    for c in corner_info:
+        cid = c["tid"]
+        ctype = c["lab"]
+        pos = coords[id_to_index[cid]]
+        color = "blue" if ctype == "GALAXY" else "orange"
+        ax.scatter(pos[0], pos[1], pos[2], s=50, color=color)
+        ax.text(pos[0], pos[1], pos[2], f"{ctype}", fontsize=8)
+
+    ax.scatter(center[0], center[1], center[2], s=100, color="red")
+    ax.set_title(f"3D Map: Target {target_id} - The Lattice View")
+    plt.show()
+
 def fire_precision_missile():
+    global BASE_AXIS
     import datetime
     log_filename = "San_Salvador_Discovery.txt"
     text_output.delete("1.0", tk.END)
-    text_output.insert(tk.END, ">>> PRECISION STRIKE: HUNTING FOR 70% RESONANCE...\n")
+    text_output.insert(tk.END, ">>> DEEP BORE: TUNING FOR 70 PERCENT RESONANCE...\n")
     root.update_idletasks()
 
-    best_rate = 63.1  
+    best_rate = 63.2  
     current_best_axis = BASE_AXIS.copy()
     
-    for sweep in range(30):
-        nudge = (np.random.rand(3) - 0.5) * 0.05 
+    for sweep in range(100): # Increased to 100 for Deep Bore
+        nudge = (np.random.rand(3) - 0.5) * 0.03 # Smaller, more precise nudge
         trial_axis = current_best_axis + nudge
         trial_axis /= np.linalg.norm(trial_axis)
         
@@ -186,45 +153,67 @@ def fire_precision_missile():
                     total_hits += 1
         
         success_rate = (total_hits / (50 * 8)) * 100
-        
         if success_rate > best_rate:
             best_rate = success_rate
             current_best_axis = trial_axis
-            text_output.insert(tk.END, f"NEW PEAK FOUND: {best_rate:.1f}% Alignment!\n")
+            BASE_AXIS = current_best_axis # Update the ship's steering permanently
+            text_output.insert(tk.END, f"PEAK FOUND: {best_rate:.1f}% at Sweep {sweep}\n")
             text_output.see(tk.END)
             root.update_idletasks()
-        elif sweep % 5 == 0:
-            text_output.insert(tk.END, f"Sweep {sweep}/30: Adjusting orientation...\n")
-            root.update_idletasks()
 
-    report = (f"\n🏆 CUBA MISSION COMPLETE\n"
-              f"Peak Grid Success: {best_rate:.1f}%\n"
+    report = (f"\nCUBA MISSION SUCCESS\nPeak Grid Success: {best_rate:.1f}%\n"
               f"Final Master Axis: {current_best_axis.tolist()}\n")
     
-    with open(log_filename, "a") as f:
-        f.write(f"\nPRECISION SWEEP - {datetime.datetime.now()}\n")
-        f.write(report + "="*60 + "\n")
+    with open(log_filename, "a", encoding="utf-8") as f:
+        f.write(f"\nDEEP BORE - {datetime.datetime.now()}\n{report}\n")
 
     text_output.insert(tk.END, report)
     messagebox.showinfo("Mission Success", f"New Peak: {best_rate:.1f}%")
-    
+
 def search_trigger():
-    tid_in = entry_tid.get().strip()
+    global last_corner_data, last_target_id
     ra_in, dec_in, z_in = entry_ra.get().strip(), entry_dec.get().strip(), entry_z.get().strip()
-    
-    if tid_in.isdigit() and int(tid_in) in id_to_index:
-        run_search(id_to_index[int(tid_in)])
-    elif ra_in and dec_in and z_in:
-        try:
-            target_xyz = radec_z_to_xyz(float(ra_in), float(dec_in), float(z_in), cosmo)
-            _, idx = tree.query(target_xyz)
-            run_search(idx)
-        except: messagebox.showerror("Error", "Check RA/DEC/Z values.")
-    else: messagebox.showerror("Error", "Enter ID or RA/DEC/Z")
+    try:
+        target_xyz = radec_z_to_xyz(float(ra_in), float(dec_in), float(z_in), cosmo)
+        _, idx = tree.query(target_xyz)
+        
+        center = coords[idx]
+        vertices = build_fixed_cube(center)
+        res = [analyze_corner(v) for v in vertices]
+        last_corner_data = res
+        last_target_id = int(targetid[idx])
+        
+        text_output.delete("1.0", tk.END)
+        text_output.insert(tk.END, f"TARGET LOCKED: {last_target_id}\n\n")
+        for i, r in enumerate(res):
+            text_output.insert(tk.END, f"Corner {i}: {r['lab']} | Dist: {r['d']:.2f} Mpc\n")
+    except: messagebox.showerror("Error", "Check RA/DEC/Z values.")
+
+def open_3d_map():
+    if last_target_id: plot_structure_3d(last_target_id, last_corner_data, coords, id_to_index)
+    else: messagebox.showwarning("No Data", "Lock a target first!")
 
 # ============================================================
-# 4. THE GUI (The Dashboard)
+# 5. THE FINAL DASHBOARD
 # ============================================================
+root = tk.Tk(); root.title("Cristoforo Colombo Explorer")
+
+tk.Label(root, text="RA / DEC / Z:").grid(row=0, column=0, pady=10)
+frame_gps = tk.Frame(root); frame_gps.grid(row=0, column=1)
+entry_ra = tk.Entry(frame_gps, width=8); entry_ra.pack(side="left")
+entry_dec = tk.Entry(frame_gps, width=8); entry_dec.pack(side="left")
+entry_z = tk.Entry(frame_gps, width=8); entry_z.pack(side="left")
+
+tk.Button(root, text="🎯 LOCK TARGET", command=search_trigger, bg="#c1f0c1", width=20).grid(row=1, column=0, columnspan=2)
+text_output = tk.Text(root, width=60, height=15); text_output.grid(row=2, column=0, columnspan=2, padx=10, pady=10)
+
+tk.Button(root, text="🚀 FIRE PRECISION MISSILE (100 SWEEPS)", bg="red", fg="white", font=('Arial', 10, 'bold'),
+          command=lambda: threading.Thread(target=fire_precision_missile, daemon=True).start()).grid(row=3, column=0, columnspan=2, pady=5)
+
+tk.Button(root, text="🌌 SHOW 3D STRUCTURE", bg="#3498db", fg="white", font=('Arial', 10, 'bold'),
+          command=open_3d_map).grid(row=4, column=0, columnspan=2, pady=5)
+
+root.mainloop()
 root = tk.Tk(); root.title("Galaxy Periodic Oscillation Explorer")
 
 tk.Label(root, text="TARGETID:").grid(row=0, column=0, pady=5)
